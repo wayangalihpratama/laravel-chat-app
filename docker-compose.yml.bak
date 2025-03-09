@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # Nginx service for handling web requests
+  nginx:
+    build:
+      context: ./backend
+      target: nginx
+    container_name: laravel_nginx
+    ports:
+      - "8000:80"
+      - "443:443"
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - php
+    networks:
+      - laravel-network
+    restart: unless-stopped
+
+  # PHP-FPM service for running Laravel application
+  php:
+    build:
+      context: ./backend
+      target: php
+    container_name: laravel_php
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    user: "1000:www-data"
+    environment:
+      PHP_OPCACHE_ENABLE: 1
+      PHP_OPCACHE_VALIDATE_TIMESTAMPS: 1
+      PHP_OPCACHE_REVALIDATE_FREQ: 0
+      PHP_MEMORY_LIMIT: 512M
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: laravel
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_CONNECTION: pgsql
+      REDIS_HOST: redis
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - laravel-network
+    restart: unless-stopped
+
+  # PostgreSQL service for database
+  postgres:
+    image: postgres:15-alpine
+    container_name: laravel_postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    environment:
+      POSTGRES_DB: laravel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      SERVICE_NAME: postgres
+      POSTGRES_INITDB_ARGS: "-c config_file=/etc/postgresql/postgresql.conf"
+      POSTGRES_HOST_AUTH_METHOD: "md5"
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+      - "-c"
+      - "hba_file=/etc/postgresql/pg_hba.conf"
+    networks:
+      - laravel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis service for caching and queue
+  redis:
+    image: redis:alpine
+    container_name: laravel_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - laravel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # pgAdmin service for database management (optional)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: laravel_pgadmin
+    ports:
+      - "8080:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+    depends_on:
+      - postgres
+    networks:
+      - laravel-network
+    restart: unless-stopped
+
+  # Laravel Artisan commands container (for migrations, etc.)
+  artisan:
+    build:
+      context: ./backend
+      target: php
+    container_name: laravel_artisan
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      - postgres
+    working_dir: /var/www/html
+    user: "1000:www-data"
+    entrypoint: ["php", "artisan"]
+    networks:
+      - laravel-network
+    profiles:
+      - tools
+    restart: unless-stopped
+
+networks:
+  laravel-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
