@@ -1,0 +1,77 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Chat API",
+        "description": "API for chat application",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/chat/sessions": {
+            "get": {
+                "summary": "Get chat sessions",
+                "operationId": "9810e20b6ce56d4af59244c26e4b523b",
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    }
+                }
+            }
+        },
+        "/api/chat/send": {
+            "post": {
+                "summary": "Send a message",
+                "operationId": "eff400320360edca81cd6e734d3bc771",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "chat_session_id": {
+                                        "type": "integer"
+                                    },
+                                    "user_id": {
+                                        "type": "integer"
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Message sent successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/chat/messages/{chatSessionId}": {
+            "get": {
+                "summary": "Get messages for a chat session",
+                "operationId": "5ca2fab90482abc209b3babca70a8fac",
+                "parameters": [
+                    {
+                        "name": "chatSessionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    }
+                }
+            }
+        }
+    }
+}
